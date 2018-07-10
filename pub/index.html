@@ -87,6 +87,7 @@
         function onPlayerStateChange(event) {
             console.log(event)
             if (event.data == YT.PlayerState.ENDED) loadVideo();
+            if (event.data == YT.BUFFERING) return
             sync()
         }
 
