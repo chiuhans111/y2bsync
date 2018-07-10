@@ -172,7 +172,7 @@
             if (Math.abs(timeoffset - targetTimeOffset) > 10)
                 timeoffset = targetTimeOffset
             else
-                timeoffset += (targetTimeOffset - timeoffset) * 0.1
+                timeoffset += (targetTimeOffset - timeoffset) * 0.5
 
             console.log('server offset:', timeoffset)
 
