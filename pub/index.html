@@ -1,12 +1,229 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Y2B SYNC</title>
-</head>
+<html>
+
 <body>
-    start SYNC
+    <p>playlist:</p>
+    <textarea name="" id="playlist" cols="60" rows="10"></textarea>
+    <button id="btnsetvideo">set video</button>
+
+    <p>your id:</p>
+    <input type="text" id="myid">
+    <p>set id:</p>
+    <input type="text" id="setid">
+    <button id="btnsetid">set your id</button>
+    <p>sync with:</p>
+    <input type="text" id="syncwith">
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <p>video:</p>
+    <div id="player"></div>
+
+    <script>
+        const socket = io();
+
+
+
+        var inputplaylist = document.getElementById('playlist')
+        var syncwith = document.getElementById('syncwith')
+        var myid = document.getElementById('myid')
+        var setid = document.getElementById('setid')
+        var btnsetid = document.getElementById('btnsetid')
+        var btnsetvideo = document.getElementById('btnsetvideo')
+
+        btnsetid.onclick = function () {
+            socket.emit('setid', setid.value)
+        }
+
+        var playlist = []
+        var playHead = 0
+
+        btnsetvideo.onclick = function () {
+            playHead = 0
+            playlist = inputplaylist.value.split(/[,\n]/).map(x => {
+                try {
+                    var a = new URL(x).searchParams.get('v')
+                    if (a) return a
+                } catch (e) {
+                    return x
+                }
+                return x
+            })
+            loadVideo()
+        }
+
+        function loadVideo() {
+            if (playlist.length == 0) return
+            playHead = playHead % playlist.length
+            player.cueVideoById(playlist[playHead])
+            player.playVideo()
+            playHead++
+        }
+
+        var timeoffset = 0
+
+
+        var player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '390',
+                width: '640',
+                videoId: 'NrHRTNeni-U',
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+
+        function onPlayerReady(event) {
+            console.log('changed video')
+            event.target.playVideo();
+        }
+
+        var done = false;
+        function onPlayerStateChange(event) {
+            console.log(event)
+            if (event.data == YT.PlayerState.ENDED) loadVideo();
+            sync()
+        }
+
+        function stopVideo() {
+            player.stopVideo();
+        }
+
+
+        function sync() {
+            var time = Date.now()
+            if (player) {
+                console.log(player.getCurrentTime())
+
+                socket.emit('sync', {
+                    with: syncwith.value,
+                    time: time,
+                    pack: {
+                        eventTime: time + timeoffset,
+                        state: player.getPlayerState(),
+                        id: player.getVideoData()['video_id'],
+                        time: player.getCurrentTime(),
+                    }
+                })
+            }
+        }
+
+
+        function update() {
+
+            setTimeout(() => {
+                update()
+            }, 1000);
+
+            sync();
+        }
+
+        update()
+
+        var err = 0.2
+        var targetVolume = false
+
+        var maxErr = null
+
+
+        function smoothUpdate() {
+            setTimeout(() => {
+                smoothUpdate()
+            }, 14);
+
+            if (maxErr !== null) {
+                maxErr *= 0.95
+                if (maxErr > 0.1) {
+                    targetVolume = 0
+                }
+                if (maxErr < 0.5) {
+                    targetVolume = 200
+                }
+            }
+
+            if (!player) return;
+            var currentVolume = player.getVolume()
+            if (targetVolume !== false) {
+                player.setVolume((targetVolume - currentVolume) * 0.02 + currentVolume)
+            }
+
+        }
+        smoothUpdate()
+
+
+        socket.on('id', id => {
+            if (myid.value != id) myid.value = id
+        })
+        socket.on('sync', data => {
+
+            var clientTime = Date.now()
+            var time = (clientTime + data.clientTime) / 2
+
+            console.log('ping:', clientTime - data.clientTime)
+
+            var targetTimeOffset = data.serverTime - time
+
+            if (Math.abs(timeoffset - targetTimeOffset) > 10)
+                timeoffset = targetTimeOffset
+            else
+                timeoffset += (targetTimeOffset - timeoffset) * 0.1
+
+            console.log('server offset:', timeoffset)
+
+            if (data.other) {
+                var pack = data.other.pack
+                var eventTime = pack.eventTime - timeoffset
+
+                var videoData = player.getVideoData()
+                if (videoData == null) return
+
+                var videoTime = player.getCurrentTime()
+
+                if (pack.id != videoData.video_id) {
+                    player.cueVideoById(pack.id)
+                }
+
+                var syncTime = pack.time
+
+                if (pack.state == YT.PlayerState.PAUSED) {
+                    player.pauseVideo()
+                } else if (pack.state == YT.PlayerState.PLAYING) {
+                    player.playVideo()
+                    syncTime = (clientTime - eventTime) / 1000 + pack.time
+                }
+
+
+                var deltaTime = syncTime - videoTime
+
+
+
+                console.log('delta:', deltaTime)
+                console.log('device offset:', err)
+
+                maxErr = Math.max(Math.abs(deltaTime), maxErr)
+
+
+
+                if (Math.abs(deltaTime) > 0.08) {
+
+                    player.seekTo(videoTime + deltaTime + err)
+
+                    err += (deltaTime * 0.3 - err) * 0.9
+                    if (err > 0.4) err = 0.4
+                    if (err < -0.1) err = -0.1
+
+                }
+
+            }
+
+        })
+
+    </script>
 </body>
+
 </html>
