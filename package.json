@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/chiuhans111/y2bsync#readme",
   "dependencies": {
-    "koa": "^2.5.1"
+    "koa": "^2.5.1",
+    "koa-static": "^5.0.0"
   }
 }

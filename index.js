@@ -1,9 +1,8 @@
-const Koa = require('koa');
-const app = new Koa();
+const serve = require('koa-static')
+const Koa = require('koa')
+const app = new Koa()
  
 // response
-app.use(ctx => {
-  ctx.body = 'Hello Koa';
-});
+app.use(serve('./pub'))
  
-app.listen(80);
+app.listen(80)
