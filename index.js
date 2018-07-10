@@ -5,4 +5,4 @@ const app = new Koa()
 // response
 app.use(serve('./pub'))
  
-app.listen(80)
+app.listen(8080)
