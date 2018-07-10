@@ -1,0 +1,22 @@
+{
+  "name": "y2bsync",
+  "version": "1.0.0",
+  "description": "sync time sync hope",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chiuhans111/y2bsync.git"
+  },
+  "author": "hans",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/chiuhans111/y2bsync/issues"
+  },
+  "homepage": "https://github.com/chiuhans111/y2bsync#readme",
+  "dependencies": {
+    "koa": "^2.5.1"
+  }
+}
