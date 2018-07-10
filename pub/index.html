@@ -14,6 +14,7 @@
     <p>sync with:</p>
     <input type="text" id="syncwith">
 
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 
@@ -23,6 +24,12 @@
     <script>
         const socket = io();
 
+        var damp = {
+            offset: 0.5,
+            deviceErrorFeed: 0.5,
+            deviceError: 0.9,
+            maxErr: 0.98
+        }
 
 
         var inputplaylist = document.getElementById('playlist')
@@ -85,7 +92,6 @@
 
         var done = false;
         function onPlayerStateChange(event) {
-            console.log(event)
             if (event.data == YT.PlayerState.ENDED) loadVideo();
             if (event.data == YT.BUFFERING) return
             sync()
@@ -138,7 +144,7 @@
             }, 14);
 
             if (maxErr !== null) {
-                maxErr *= 0.95
+                maxErr *= damp.maxErr
                 if (maxErr > 0.1) {
                     targetVolume = 0
                 }
@@ -160,6 +166,8 @@
         socket.on('id', id => {
             if (myid.value != id) myid.value = id
         })
+
+        var dosync = true
         socket.on('sync', data => {
 
             var clientTime = Date.now()
@@ -172,7 +180,7 @@
             if (Math.abs(timeoffset - targetTimeOffset) > 10)
                 timeoffset = targetTimeOffset
             else
-                timeoffset += (targetTimeOffset - timeoffset) * 0.5
+                timeoffset += (targetTimeOffset - timeoffset) * damp.offset
 
             console.log('server offset:', timeoffset)
 
@@ -208,17 +216,14 @@
 
                 maxErr = Math.max(Math.abs(deltaTime), maxErr)
 
-
-
-                if (Math.abs(deltaTime) > 0.08) {
-
+                if (Math.abs(deltaTime) > 0.1) dosync = true
+                if (Math.abs(deltaTime) < 0.05) dosync = false
+                if (dosync)
                     player.seekTo(videoTime + deltaTime + err)
 
-                    err += (deltaTime * 0.3 - err) * 0.9
-                    if (err > 0.4) err = 0.4
-                    if (err < -0.1) err = -0.1
-
-                }
+                err += (deltaTime * damp.deviceErrorFeed - err) * damp.deviceError
+                if (err > 0.4) err = 0.4
+                if (err < -0.1) err = -0.1
 
             }
 

@@ -29,6 +29,7 @@ io.on('connection', socket => {
 
     socket.on('sync', async (data) => {
 
+        await new Promise(done => setTimeout(done, 50))
 
         var serverTime = Date.now()
 
@@ -51,12 +52,15 @@ io.on('connection', socket => {
             other = y2bsync[data.with]
         }
 
+        await new Promise(done => setTimeout(done, 50))
 
         socket.emit('sync', {
             serverTime,
             clientTime: data.time,
             other
         })
+
+
     })
 
     socket.on('setid', id => {
