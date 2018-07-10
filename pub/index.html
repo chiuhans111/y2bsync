@@ -28,9 +28,9 @@
 
         var damp = {
             offset: 0.5,
-            deviceErrorFeed: 0.5,
+            deviceErrorFeed: 0.99,
             deviceError: 0.9,
-            maxErr: 0.98
+            maxErr: 0.1
         }
 
 
@@ -147,6 +147,101 @@
         var targetVolume = false
 
         var maxErr = null
+        var syncMode = false
+        var sync_play = false
+        var sync_eventTime = 0
+        var sync_targetTime = 0
+
+        var sync_expected_time = 0
+        var tweakSync = false
+        var preloadTime = 0.5
+        var reactionTime = 0.2
+
+        var tweaked = false
+
+        var expectWaits = 5
+
+
+
+        var tweaking = false
+
+
+
+
+        function getSyncTime(targetTime, eventTime, sync_play = false) {
+            var syncTime = targetTime
+            var currentTime = Date.now()
+            if (sync_play) {
+                try { globaloffset = (+inputglobalsyncoffset.value) } catch (e) { }
+                syncTime += (currentTime - eventTime + globaloffset) / 1000
+            }
+            return syncTime
+        }
+
+
+        async function tweak(targetTime, eventTime) {
+
+
+            if (tweaking) return
+            tweaking = true
+            console.log('start sync')
+
+            var globaloffset = 0
+            try { globaloffset = (+inputglobalsyncoffset.value) } catch (e) { }
+            var playing = false
+
+            if (sync_play) {
+                playing = true
+                var d = deltaTime(getSyncTime(targetTime, eventTime, playing))
+
+                console.log('video is playing, delta:', d, reactionTime)
+                player.pauseVideo()
+
+                var current = -deltaTime(0)
+                var wait = d
+                if (d < reactionTime || d > preloadTime + reactionTime) {
+                    wait = preloadTime
+                    player.seekTo(targetTime + wait + reactionTime)
+                }
+
+                await new Promise(done => setTimeout(done, (wait) * 1000))
+
+
+                player.playVideo()
+
+
+
+            } else {
+                console.log('pause')
+                player.pauseVideo()
+                player.seekTo(getSyncTime(targetTime, eventTime, playing))
+            }
+            var outofexpectSum = 0
+            for (var i = 0; i < expectWaits; i++) {
+                await new Promise(done => setTimeout(done, 300))
+
+                var outofexpect = deltaTime(getSyncTime(targetTime, eventTime, playing))
+                outofexpectSum += outofexpect
+                //if (outofexpect > 1) preloadTime += 1
+            }
+            reactionTime += (outofexpectSum / expectWaits) * damp.deviceError
+            //if (reactionTime > 2) reactionTime = 0
+            //if (reactionTime < preloadTime) reactionTime = 0
+
+            await new Promise(done => setTimeout(done, 1000))
+
+            tweaking = false
+
+        }
+
+
+        function deltaTime(syncTime) {
+            var videoData = player.getVideoData()
+            if (videoData == null) return 0
+            var videoTime = player.getCurrentTime()
+            var deltaTime = syncTime - videoTime
+            return deltaTime
+        }
 
 
         function smoothUpdate() {
@@ -154,17 +249,32 @@
                 smoothUpdate()
             }, 14);
 
-            if (maxErr !== null) {
-                maxErr *= damp.maxErr
-                if (maxErr > 0.1) {
+            var currentTime = Date.now()
+            if (!player) return;
+
+            if (syncMode) {
+                var targetTime = sync_targetTime
+                var eventTime = sync_eventTime
+                delta = deltaTime(getSyncTime(targetTime, eventTime, sync_play))
+
+                maxErr += (Math.abs(delta) - maxErr) * damp.maxErr
+                //console.log(delta)
+                //if (Math.abs(delta) > 0.2)
+                //if (Math.abs(delta) < 0.05)
+
+                if (Math.abs(maxErr) > 0.1) {
                     targetVolume = 0
+                    dosync = true
                 }
-                if (maxErr < 0.5) {
+                if (Math.abs(maxErr) < 0.05) {
                     targetVolume = 200
+                    dosync = false
                 }
+                if (dosync) tweak(targetTime, eventTime)
+
             }
 
-            if (!player) return;
+
             var currentVolume = player.getVolume()
             if (targetVolume !== false) {
                 player.setVolume((targetVolume - currentVolume) * 0.02 + currentVolume)
@@ -184,7 +294,7 @@
             var clientTime = Date.now()
             var time = (clientTime + data.clientTime) / 2
 
-            console.log('ping:', clientTime - data.clientTime)
+            //console.log('ping:', clientTime - data.clientTime)
 
             var targetTimeOffset = data.serverTime - time
 
@@ -195,14 +305,14 @@
 
             // console.log('server offset:', timeoffset)
 
+            syncMode = false
             if (data.other) {
+                syncMode = true
                 var pack = data.other.pack
                 var eventTime = pack.eventTime - timeoffset
 
                 var videoData = player.getVideoData()
                 if (videoData == null) return
-
-                var videoTime = player.getCurrentTime()
 
                 if (pack.id != videoData.video_id) {
                     player.cueVideoById(pack.id)
@@ -211,40 +321,13 @@
                 var syncTime = pack.time
 
                 if (pack.state == YT.PlayerState.PAUSED) {
-                    player.pauseVideo()
+                    sync_play = false
                 } else if (pack.state == YT.PlayerState.PLAYING) {
-
-                    var globalOffset = 0
-                    try {
-                        globaloffset = (+inputglobalsyncoffset.value)
-                    } catch (e) {
-
-                    }
-
-                    player.playVideo()
-                    syncTime = (clientTime - eventTime + globaloffset) / 1000 + pack.time
+                    sync_play = true
                 }
 
-
-                var deltaTime = syncTime - videoTime
-
-
-
-                console.log('delta:', deltaTime)
-                console.log('device offset:', err)
-
-                maxErr = Math.max(Math.abs(deltaTime), maxErr)
-
-                if (Math.abs(deltaTime) > 0.1) dosync = true
-                if (Math.abs(deltaTime) < 0.05) dosync = false
-                if (dosync)
-                    player.seekTo(videoTime + deltaTime + err)
-
-
-
-                err += (deltaTime * damp.deviceErrorFeed - err) * damp.deviceError
-                if (err > 0.4) err = 0.4
-                if (err < -0.1) err = -0.1
+                sync_targetTime = pack.time
+                sync_eventTime = eventTime
 
             }
 
