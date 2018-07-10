@@ -13,6 +13,8 @@
     <button id="btnsetid">set your id</button>
     <p>sync with:</p>
     <input type="text" id="syncwith">
+    <p>Global Sync Offset: (ms)</p>
+    <input type="text" id="globalsyncoffset" value="0">
 
 
     <script src="/socket.io/socket.io.js"></script>
@@ -38,6 +40,7 @@
         var setid = document.getElementById('setid')
         var btnsetid = document.getElementById('btnsetid')
         var btnsetvideo = document.getElementById('btnsetvideo')
+        var inputglobalsyncoffset = document.getElementById('globalsyncoffset')
 
         btnsetid.onclick = function () {
             socket.emit('setid', setid.value)
@@ -46,8 +49,17 @@
         var playlist = []
         var playHead = 0
 
+        inputplaylist.onchange = function () {
+            updateList()
+        }
+
         btnsetvideo.onclick = function () {
             playHead = 0
+            updateList()
+            loadVideo()
+        }
+
+        function updateList() {
             playlist = inputplaylist.value.split(/[,\n]/).map(x => {
                 try {
                     var a = new URL(x).searchParams.get('v')
@@ -57,7 +69,6 @@
                 }
                 return x
             })
-            loadVideo()
         }
 
         function loadVideo() {
@@ -105,7 +116,7 @@
         function sync() {
             var time = Date.now()
             if (player) {
-                console.log(player.getCurrentTime())
+                // console.log(player.getCurrentTime())
 
                 socket.emit('sync', {
                     with: syncwith.value,
@@ -182,7 +193,7 @@
             else
                 timeoffset += (targetTimeOffset - timeoffset) * damp.offset
 
-            console.log('server offset:', timeoffset)
+            // console.log('server offset:', timeoffset)
 
             if (data.other) {
                 var pack = data.other.pack
@@ -202,8 +213,16 @@
                 if (pack.state == YT.PlayerState.PAUSED) {
                     player.pauseVideo()
                 } else if (pack.state == YT.PlayerState.PLAYING) {
+
+                    var globalOffset = 0
+                    try {
+                        globaloffset = (+inputglobalsyncoffset.value)
+                    } catch (e) {
+
+                    }
+
                     player.playVideo()
-                    syncTime = (clientTime - eventTime) / 1000 + pack.time
+                    syncTime = (clientTime - eventTime + globaloffset) / 1000 + pack.time
                 }
 
 
@@ -220,6 +239,8 @@
                 if (Math.abs(deltaTime) < 0.05) dosync = false
                 if (dosync)
                     player.seekTo(videoTime + deltaTime + err)
+
+
 
                 err += (deltaTime * damp.deviceErrorFeed - err) * damp.deviceError
                 if (err > 0.4) err = 0.4
