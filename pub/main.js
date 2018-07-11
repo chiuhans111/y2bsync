@@ -186,6 +186,7 @@ function sync(force = false) {
                 state: player.getPlayerState(),
                 id: player.getVideoData()['video_id'],
                 time: player.getCurrentTime(),
+                rate: player.getPlaybackRate()
             },
             force
         })
@@ -211,6 +212,7 @@ var targetVolume = false
 var maxErr = null
 var syncMode = false
 var sync_play = false
+var sync_rate = 1
 var sync_eventTime = 0
 var sync_targetTime = 0
 
@@ -235,7 +237,7 @@ function getSyncTime(targetTime, eventTime, sync_play = false) {
     var currentTime = Date.now()
     if (sync_play) {
         try { globaloffset = (+inputglobalsyncoffset.value) } catch (e) { }
-        syncTime += (currentTime - eventTime + globaloffset) / 1000
+        syncTime += (currentTime - eventTime + globaloffset) / 1000 * sync_rate
     }
     return syncTime
 }
@@ -369,11 +371,11 @@ function smoothUpdate() {
         //if (Math.abs(delta) > 0.2)
         //if (Math.abs(delta) < 0.05)
 
-        if (Math.abs(maxErr) > limit.max) {
+        if (Math.abs(maxErr) > limit.max * sync_rate) {
             targetVolume = 0
             dosync = true
         }
-        if (Math.abs(maxErr) < limit.min) {
+        if (Math.abs(maxErr) < limit.min * sync_rate) {
             targetVolume = 150
 
             try {
@@ -439,7 +441,8 @@ socket.on('sync', data => {
         }
 
         sync_targetTime = pack.time
+        sync_rate = pack.rate
         sync_eventTime = eventTime
-
+        player.setPlaybackRate(sync_rate)
     }
 })
