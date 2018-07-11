@@ -1,7 +1,7 @@
 var timespan = 5000
 
 function tx(time) {
-    return (timespan - (data.local.time - time) - timespan / 4) / timespan * canvas.width
+    return (timespan - (data.local.time - time) - timespan / 4) / timespan * width
 }
 
 var canvasdiv = document.getElementById('canvas')
@@ -49,7 +49,7 @@ function draw() {
     push()
     stroke('#009688')
     strokeWeight(10)
-    line(0, 20, canvas.width, 20)
+    line(0, 20, width, 20)
     pop()
 
     push()
