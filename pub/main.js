@@ -15,10 +15,15 @@ var myid = document.getElementById('myid')
 var setid = document.getElementById('setid')
 var myidloading = document.getElementById('myidloading')
 var myiderror = document.getElementById('myiderror')
+var share = document.getElementById('share')
 
 var btnsetid = document.getElementById('btnsetid')
 var btnsetvideo = document.getElementById('btnsetvideo')
 var inputglobalsyncoffset = document.getElementById('globalsyncoffset')
+
+
+var syncwithparam = (new URL(location.href)).searchParams.get('sync')
+if (syncwithparam != null) syncwith.value = syncwithparam
 
 var data = {
     playerdata: {},
@@ -102,7 +107,7 @@ function onYouTubeIframeAPIReady() {
 
 function onPlayerReady(event) {
     console.log('changed video')
-    event.target.playVideo();
+    // event.target.playVideo();
     record({
         playerready: true
     })
@@ -330,6 +335,7 @@ smoothUpdate()
 
 socket.on('id', id => {
     if (id.error) return myiderror.style.display = ''
+    share.value = location.origin + '?sync=' + encodeURI(id)
     if (myid.value != id) myid.value = id
     if (setid.textContent != id) setid.textContent = id
     myidloading.style.display = 'none'

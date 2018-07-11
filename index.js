@@ -11,7 +11,7 @@ var io = require('socket.io')(server)
 
 function findbyid(id) {
     if (id == null) return null
-    if (y2bsync[id]) return y2bsync[id]
+    if (y2bsync[id]) return id
     for (var i in y2bsync) {
         if (id == y2bsync[i].nick) return i
     }
@@ -81,7 +81,7 @@ io.on('connection', socket => {
 
     })
 
-    socket.on('disconnected', () => {
+    socket.on('disconnect', () => {
         delete y2bsync[socket.id]
     })
 
