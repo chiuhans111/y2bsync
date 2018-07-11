@@ -1,2 +1,3 @@
 # y2bsync
-youtube sync is good good
+### _PERFECT SYNC_ Youtube Video WITH YOUR FRIENDS!!!
+![Y2BSYNC](https://i.imgur.com/N8eTVtK.png)
