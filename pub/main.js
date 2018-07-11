@@ -25,9 +25,12 @@ var myidloading = document.getElementById('myidloading')
 var myiderror = document.getElementById('myiderror')
 var share = document.getElementById('share')
 
+
+
 var btnsetid = document.getElementById('btnsetid')
 var btnsetvideo = document.getElementById('btnsetvideo')
 var inputglobalsyncoffset = document.getElementById('globalsyncoffset')
+var inputglobalvolume = document.getElementById('globalvolume')
 
 
 var syncwithparam = (new URL(location.href)).searchParams.get('sync')
@@ -371,7 +374,12 @@ function smoothUpdate() {
             dosync = true
         }
         if (Math.abs(maxErr) < limit.min) {
-            targetVolume = 200
+            targetVolume = 150
+
+            try {
+                targetVolume = parseInt(inputglobalvolume.value)
+            } catch (e) { }
+
             dosync = false
             succedReactionTime += (reactionTime - succedReactionTime) * 0.03
         }
