@@ -66,9 +66,17 @@ io.on('connection', socket => {
     socket.on('setid', id => {
         console.log('set id', id)
 
-        if (findbyid(id) != null) return socket.emit('message', 'id cannot use')
+        if (id == y2bsync[socket.id].nick)
+            return socket.emit('id', y2bsync[socket.id].nick)
+
+
+
+        if (findbyid(id) != null)
+            return socket.emit('id', { error: true })
+
         if (y2bsync[socket.id] == null) y2bsync[socket.id] = {}
         y2bsync[socket.id].nick = id
+
         socket.emit('id', y2bsync[socket.id].nick)
 
     })
