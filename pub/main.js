@@ -5,9 +5,14 @@ const timer = new Timer()
 var damp = {
     offset: 0.5,
     deviceErrorFeed: 1,
-    deviceError: 0.9,
-    maxErr: 0.08,
+    deviceError: 0.98,
+    maxErr: 0.1,
     preloadTime: 0.1
+}
+
+var limit = {
+    max: 0.075,
+    min: 0.05
 }
 
 
@@ -283,8 +288,8 @@ async function tweak(targetTime, eventTime) {
     var totalOutofexpect = (outofexpectSum / expectWaits)
     reactionTime += totalOutofexpect * damp.deviceError
 
-    if (reactionTime > 10) reactionTime = 10
-    if (reactionTime < -10) reactionTime = -10
+    if (reactionTime > 3) reactionTime = 3
+    if (reactionTime < -1) reactionTime = -1
 
     /*
     if (totalOutofexpect < 0) {
@@ -341,11 +346,11 @@ function smoothUpdate() {
         //if (Math.abs(delta) > 0.2)
         //if (Math.abs(delta) < 0.05)
 
-        if (Math.abs(maxErr) > 0.1) {
+        if (Math.abs(maxErr) > limit.max) {
             targetVolume = 0
             dosync = true
         }
-        if (Math.abs(maxErr) < 0.05) {
+        if (Math.abs(maxErr) < limit.min) {
             targetVolume = 200
             dosync = false
             succedReactionTime += (reactionTime - succedReactionTime) * 0.03
