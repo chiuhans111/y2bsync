@@ -6,7 +6,7 @@ var damp = {
     offset: 0.5,
     deviceErrorFeed: 1,
     deviceError: 0.9,
-    maxErr: 0.1,
+    maxErr: 0.08,
     preloadTime: 0.1
 }
 
