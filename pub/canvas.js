@@ -1,8 +1,18 @@
 var timespan = 5000
 
 function tx(time) {
-    return (timespan - (data.local.time - time) - timespan / 4) / timespan * width
+    return (timespan - (data.local.time - time) - timespan / 2) / timespan * width
 }
+
+function txs(time) {
+    return (timespan + time - timespan / 2) / timespan * width
+}
+
+function txl(time) {
+    return (time) / timespan * width
+}
+
+
 
 var canvasdiv = document.getElementById('canvas')
 
@@ -44,6 +54,17 @@ function draw() {
     }
     pop()
 
+    var x_reaction = txs(reactionTime * 1000)
+    var x_preload = txs((reactionTime + preloadTime) * 1000)
+
+    // action line
+    push()
+    strokeWeight(3)
+    stroke('#212121')
+    line(x_reaction, 0, x_reaction, 60)
+    stroke('#607D8B')
+    line(x_preload, 0, x_preload, 60)
+    pop()
 
     // server
     push()
@@ -52,6 +73,7 @@ function draw() {
     line(0, 20, width, 20)
     pop()
 
+    // delta
     push()
     stroke('#757575')
     strokeWeight(10)
@@ -59,28 +81,82 @@ function draw() {
     if (Math.abs(deltaTime) < 0.1) correctSize += (30 - correctSize) * 0.3
     else correctSize += (10 - correctSize) * 0.1
 
-    var ta = data.local.time
-    var tb = (data.local.playTime - data.server.time) * 1000 + data.local.time
-    line(tx(tb), 45, tx(ta), 45)
+
+    var tb = (data.local.playTime - data.server.time) * 1000
+    line(txs(tb), 45, txs(0), 45)
     noStroke()
 
+    // correct ball
     fill('#4CAF50')
-    ellipse(tx(tb), 45, correctSize, correctSize)
+    ellipse(txs(tb), 45, correctSize, correctSize)
     fill('#212121')
-    ellipse(tx(ta), 45, 10, 10)
+    ellipse(txs(0), 45, 10, 10)
     fill('#E91E63')
     ellipse(tx(data.server.event - timeoffset), 30, 10, 10)
     pop()
 
 
-
+    var count_outofexpect = 0
     var lastTweak = null
+    for (var d of data.events.map(x => x).reverse()) {
+        var event = d.event
+        push()
+        if (event.outofexpect) {
+            var y = count_outofexpect * 10 + 60
+            count_outofexpect++
 
-    for (var d of data.events) {
+            noStroke()
+            fill('#F44336')
+            var xr = txs(event.reactionTime * 1000)
+            ellipse(xr, y, 5, 5)
+            stroke('#F44336')
+            var x2 = +xr + txl(event.outofexpect * 1000)
+
+            line(xr, y, x2, y)
+            line(x2 - 5, y - 5, x2 + 5, y + 5)
+            line(x2 + 5, y - 5, x2 - 5, y + 5)
+        }
+        pop()
+    }
+
+    var last_v_state = null
+    var last_v_time = null
+
+
+    for (var d of data.events.concat([
+        {
+            event: { v_state: true },
+            time: data.local.time
+        }
+    ])) {
         push()
 
         var event = d.event
         var x = tx(d.time)
+
+        // V state
+        push()
+
+        stroke(0)
+        strokeWeight(4)
+
+        if (event.v_state) {
+            if (last_v_state != null) {
+                switch (last_v_state) {
+                    case YT.PlayerState.ENDED: stroke('#BDBDBD'); break
+                    case YT.PlayerState.PLAYING: stroke('#4CAF50'); break
+                    case YT.PlayerState.PAUSED: stroke('#9C27B0'); break
+                    case YT.PlayerState.BUFFERING: stroke('#FF5722'); break
+                    case YT.PlayerState.CUED: stroke('#448AFF'); break
+                }
+                line(tx(last_v_time), 36, tx(d.time), 36)
+
+            }
+
+            last_v_state = event.v_state
+            last_v_time = d.time
+        }
+        pop()
 
 
         // sync A
@@ -100,6 +176,10 @@ function draw() {
             ellipse(x, 55, 10, 10)
             lastTweak = x
         }
+        if (event.seek) {
+            fill('#E91E63')
+            ellipse(txs((event.seek - data.server.time) * 1000), 30, 10, 10)
+        }
         if (event.tweaked) {
             if (lastTweak != null) {
                 strokeWeight(2)
@@ -110,6 +190,7 @@ function draw() {
             fill('#F44336')
             ellipse(x, 55, 10, 10)
         }
+
         pop()
         push()
 

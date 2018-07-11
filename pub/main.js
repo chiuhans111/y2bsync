@@ -1,10 +1,13 @@
 const socket = io();
+const timer = new Timer()
+
 
 var damp = {
     offset: 0.5,
-    deviceErrorFeed: 0.99,
+    deviceErrorFeed: 1,
     deviceError: 0.9,
-    maxErr: 0.1
+    maxErr: 0.1,
+    preloadTime: 0.1
 }
 
 
@@ -85,6 +88,7 @@ function loadVideo() {
     reactionTime = succedReactionTime
 }
 
+var timeoffset_Damper = new Damper(15)
 var timeoffset = 0
 
 
@@ -115,6 +119,10 @@ function onPlayerReady(event) {
 
 var done = false;
 function onPlayerStateChange(event) {
+    record({
+        v_state: event.data
+    })
+
     if (event.data == YT.PlayerState.ENDED) {
         record({
             ENDED: true
@@ -142,7 +150,7 @@ function sync() {
         synca: time
     })
 
-    if (player) {
+    if (player && typeof player.getPlayerState == 'function') {
         // console.log(player.getCurrentTime())
 
         socket.emit('sync', {
@@ -232,35 +240,59 @@ async function tweak(targetTime, eventTime) {
         player.pauseVideo()
 
         var current = -deltaTime(0)
-        var wait = d
-        if (d < reactionTime || d > preloadTime + reactionTime) {
+
+        var wait = -d - reactionTime
+
+        if (wait < 0 || wait > preloadTime) {
             wait = preloadTime
-            player.seekTo(targetTime + wait + reactionTime)
+            var seekTarget = current + d + reactionTime + preloadTime
+            player.seekTo(seekTarget)
+            record({
+                seek: seekTarget
+            })
         }
 
-        await new Promise(done => setTimeout(done, (wait) * 1000))
-
+        await new Promise(done => timer.setTimeout(done, (wait) * 1000))
 
         player.playVideo()
+
+
 
 
 
     } else {
         console.log('pause')
         player.pauseVideo()
+
         player.seekTo(getSyncTime(targetTime, eventTime, playing))
     }
     var outofexpectSum = 0
     for (var i = 0; i < expectWaits; i++) {
-        await new Promise(done => setTimeout(done, 300))
+
+        await new Promise(done => timer.setTimeout(done, 500))
+
 
         var outofexpect = deltaTime(getSyncTime(targetTime, eventTime, playing))
         outofexpectSum += outofexpect
+        record({
+            outofexpect,
+            reactionTime
+        })
         //if (outofexpect > 1) preloadTime += 1
     }
-    reactionTime += (outofexpectSum / expectWaits) * damp.deviceError
+    var totalOutofexpect = (outofexpectSum / expectWaits)
+    reactionTime += totalOutofexpect * damp.deviceError
+
     if (reactionTime > 10) reactionTime = 10
     if (reactionTime < -10) reactionTime = -10
+
+    /*
+    if (totalOutofexpect < 0) {
+        preloadTime += (-totalOutofexpect) * damp.preloadTime
+    } else {
+        if (preloadTime > 0.5) preloadTime -= 0.02
+    }
+    */
     //if (reactionTime > 2) reactionTime = 0
     //if (reactionTime < preloadTime) reactionTime = 0
     record({
@@ -293,6 +325,7 @@ function smoothUpdate() {
     }, 14);
 
     var currentTime = Date.now()
+    timer.update(currentTime)
     if (!player) return;
 
     if (syncMode) {
@@ -323,7 +356,7 @@ function smoothUpdate() {
         if (dosync) tweak(targetTime, eventTime)
     }
 
-
+    if (!(typeof player.getVolume == 'function')) return
     var currentVolume = player.getVolume()
     if (targetVolume !== false) {
         player.setVolume((targetVolume - currentVolume) * 0.02 + currentVolume)
@@ -351,12 +384,17 @@ socket.on('sync', data => {
 
     //console.log('ping:', clientTime - data.clientTime)
 
+
+    /*
     var targetTimeOffset = data.serverTime - time
 
     if (Math.abs(timeoffset - targetTimeOffset) > 10)
         timeoffset = targetTimeOffset
     else
         timeoffset += (targetTimeOffset - timeoffset) * damp.offset
+    */
+    timeoffset = timeoffset_Damper.feed(data.serverTime - time)
+
 
     // console.log('server offset:', timeoffset)
     record({
