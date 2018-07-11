@@ -27,22 +27,35 @@ io.on('connection', socket => {
 
     socket.emit('id', y2bsync[socket.id].nick)
 
-    socket.on('sync', async (data) => {
 
-        await new Promise(done => setTimeout(done, 100))
+    socket.on('timing', async (data) => {
+        var serverTime = Date.now() + 500
+        await new Promise(done => setTimeout(done, 1000))
+        socket.emit('timing', {
+            clientTime: data,
+            serverTime
+        })
+    })
+
+
+    socket.on('sync', async (data) => {
 
         var serverTime = Date.now()
 
-
+        // remove user that idle over TEN seconds
         for (var i in y2bsync) {
-
             if (y2bsync[i].time !== null && serverTime - y2bsync[i].time > 10000) {
                 delete y2bsync[i]
             }
         }
 
-        y2bsync[socket.id].pack = data.pack
+        // update check time
         y2bsync[socket.id].time = serverTime
+
+        // see if there is a pack to upload
+        if (data.pack)
+            y2bsync[socket.id].pack = data.pack
+
 
         var other = null
 
@@ -50,9 +63,19 @@ io.on('connection', socket => {
 
         if (data.with && data.with != socket.id) {
             other = y2bsync[data.with]
+            y2bsync[socket.id].with = data.with
         }
 
-        await new Promise(done => setTimeout(done, 100))
+        if (data.force) {
+            console.log('forced update')
+            for (var i in io.sockets.sockets) {
+                console.log('ids', i)
+                if (y2bsync[i] && y2bsync[i].with == socket.id) {
+                    console.log('found follower')
+                    io.sockets.sockets[i].emit('force')
+                }
+            }
+        }
 
         socket.emit('sync', {
             serverTime,
@@ -60,16 +83,15 @@ io.on('connection', socket => {
             other
         })
 
-
     })
+
+
 
     socket.on('setid', id => {
         console.log('set id', id)
 
         if (id == y2bsync[socket.id].nick)
             return socket.emit('id', y2bsync[socket.id].nick)
-
-
 
         if (findbyid(id) != null)
             return socket.emit('id', { error: true })
@@ -78,7 +100,6 @@ io.on('connection', socket => {
         y2bsync[socket.id].nick = id
 
         socket.emit('id', y2bsync[socket.id].nick)
-
     })
 
     socket.on('disconnect', () => {

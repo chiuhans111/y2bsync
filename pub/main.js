@@ -140,7 +140,8 @@ function onPlayerStateChange(event) {
         })
         return
     }
-    sync()
+
+    sync(true)
 }
 
 function stopVideo() {
@@ -148,12 +149,28 @@ function stopVideo() {
 }
 
 
-function sync() {
+function timing() {
     var time = Date.now()
-
+    socket.emit('timing', time)
     record({
         synca: time
     })
+}
+socket.on('timing', data => {
+    var clientTime = Date.now()
+    var time = (clientTime + data.clientTime) / 2
+    timeoffset = timeoffset_Damper.feed(data.serverTime - time)
+
+    record({
+        syncb: {
+            time1: data.clientTime, time2: clientTime, serverTime: data.serverTime
+        }
+    })
+})
+
+
+function sync(force = false) {
+    var time = Date.now()
 
     if (player && typeof player.getPlayerState == 'function') {
         // console.log(player.getCurrentTime())
@@ -166,7 +183,8 @@ function sync() {
                 state: player.getPlayerState(),
                 id: player.getVideoData()['video_id'],
                 time: player.getCurrentTime(),
-            }
+            },
+            force
         })
     }
 }
@@ -176,8 +194,9 @@ function update() {
 
     setTimeout(() => {
         update()
-    }, 1000);
+    }, 3000);
 
+    timing();
     sync();
 }
 
@@ -333,6 +352,7 @@ function smoothUpdate() {
     timer.update(currentTime)
     if (!player) return;
 
+
     if (syncMode) {
         var targetTime = sync_targetTime
         var eventTime = sync_eventTime
@@ -379,36 +399,15 @@ socket.on('id', id => {
     myidloading.style.display = 'none'
 })
 
+
+socket.on('force', () => {
+    sync(true)
+})
+
 var dosync = true
+
+
 socket.on('sync', data => {
-
-
-    var clientTime = Date.now()
-    var time = (clientTime + data.clientTime) / 2
-
-
-    //console.log('ping:', clientTime - data.clientTime)
-
-
-    /*
-    var targetTimeOffset = data.serverTime - time
-
-    if (Math.abs(timeoffset - targetTimeOffset) > 10)
-        timeoffset = targetTimeOffset
-    else
-        timeoffset += (targetTimeOffset - timeoffset) * damp.offset
-    */
-    timeoffset = timeoffset_Damper.feed(data.serverTime - time)
-
-
-    // console.log('server offset:', timeoffset)
-    record({
-        syncb: {
-            time1: data.clientTime,
-            time2: clientTime,
-            serverTime: data.serverTime
-        }
-    })
 
     syncMode = false
     if (data.other) {
@@ -425,7 +424,7 @@ socket.on('sync', data => {
 
         var syncTime = pack.time
 
-        if (pack.state == YT.PlayerState.PAUSED) {
+        if (pack.state == YT.PlayerState.PAUSED || pack.state == YT.PlayerState.ENDED) {
             sync_play = false
         } else if (pack.state == YT.PlayerState.PLAYING) {
             sync_play = true
@@ -435,5 +434,4 @@ socket.on('sync', data => {
         sync_eventTime = eventTime
 
     }
-
 })
