@@ -1,11 +1,10 @@
 const serve = require('koa-static')
 const Koa = require('koa')
 const app = new Koa()
-var port = process.env.PORT || 8080;
+const port = process.env.PORT || 8080;
 var server = app.listen(port)
 
 var y2bsync = {}
-
 var io = require('socket.io')(server)
 
 
@@ -39,6 +38,8 @@ io.on('connection', socket => {
 
 
     socket.on('sync', async (data) => {
+
+        if (!y2bsync[socket.id]) return
 
         var serverTime = Date.now()
 
@@ -83,12 +84,14 @@ io.on('connection', socket => {
             other
         })
 
+        delete other
     })
 
 
 
     socket.on('setid', id => {
         console.log('set id', id)
+        if (!y2bsync[socket.id]) return
 
         if (id == y2bsync[socket.id].nick)
             return socket.emit('id', y2bsync[socket.id].nick)
@@ -105,8 +108,6 @@ io.on('connection', socket => {
     socket.on('disconnect', () => {
         delete y2bsync[socket.id]
     })
-
-
 })
 
 

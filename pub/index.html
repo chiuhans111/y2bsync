@@ -18,7 +18,7 @@
                 <a href="https://youtube.com" class="btn btn-link" target="blank">YouTube</a>
             </section>
             <section class="navbar-center">
-                <h3>Y2BSYNC</h3>
+                <h3>千里共</h3>
             </section>
             <section class="navbar-section">
                 <a href="https://github.com/chiuhans111/y2bsync" class="btn btn-link" target="blank">GitHub</a>
@@ -27,11 +27,15 @@
 
 
         <div class="columns">
-
-
-            <div class="column col-sm-12 col-md-6 ">
-                <div id="player"></div>
-                <div id="canvas" style="height: 200px;"></div>
+            <div class="column col-sm-12 col-md-6 " id="youtube">
+                <div>
+                    <div style="width:100%;" id="youtubewarp">
+                        <div style="position: absolute">
+                            <div id="player"></div>
+                        </div>
+                    </div>
+                    <div id="canvas" style="height: 200px;"></div>
+                </div>
             </div>
 
 
@@ -58,16 +62,22 @@
                     <span class="input-group-addon">SYNC WITH</span>
                     <input type="text" class="form-input" id="syncwith" placeholder="...">
                 </div>
-
+                <div class="input-group">
+                    <span class="input-group-addon">VOLUME (0~150)</span>
+                    <input type="text" class="form-input" value='100' id="globalvolume" placeholder="0">
+                </div>
                 <div class="input-group">
                     <span class="input-group-addon">TIME OFFSET (ms)</span>
                     <input type="text" class="form-input" value='0' id="globalsyncoffset" placeholder="0">
                 </div>
 
                 <div class="input-group">
-                    <span class="input-group-addon">VOLUME (0~200)</span>
-                    <input type="text" class="form-input" value='150' id="globalvolume" placeholder="0">
+                    <span class="input-group-addon">MIN DIF (ms)</span>
+                    <input type="text" class="form-input" value='50' id="mindif" placeholder="0">
+                    <span class="input-group-addon">MAX DIF (ms)</span>
+                    <input type="text" class="form-input" value='100' id="maxdif" placeholder="0">
                 </div>
+                
 
                 <hr>
                 <div class="input-group">

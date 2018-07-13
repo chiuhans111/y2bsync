@@ -24,10 +24,11 @@ function Timer() {
 }
 
 
-function Damper(size) {
+function Damper(size, bias) {
     var me = this
     this.data = []
     this.size = size
+    this.bias = bias
     this.value = null
     this.time = 0
 
@@ -36,8 +37,8 @@ function Damper(size) {
         while (me.data.length > me.size) me.data.shift()
 
         var x = me.data.map(x => x).sort()
-        var n = x.slice(x.length / 4, x.length * 3 / 4)
-        if (n.length == 0) return value
+        var n = x.slice(bias, -bias)
+        if (n.length == 0) return me.data.reduce((a, b) => a + b, 0) / me.data.length;
         return n.reduce((a, b) => a + b, 0) / n.length
     }
 }

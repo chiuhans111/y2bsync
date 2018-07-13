@@ -44,7 +44,7 @@ function draw() {
 
         if (d.event.maxErr) {
             stroke(lerpColor(color('#388E3C'), color('#FF5252'), map(Math.abs(d.event.maxErr), 0.05, 0.3, 0, 1)))
-            var y = d.event.maxErr * 40 + 45
+            var y = Math.abs(d.event.maxErr) * 40 + 45
             if (lastmaxErr != null) {
                 line(lastmaxErrx, lastmaxErr, x, y)
             }

@@ -1,41 +1,76 @@
+
+// Global Objects and Variables ---------------------------
 const socket = io();
 const timer = new Timer()
 
+// Global Dom Elements ------------------------------------
+// - Playlist
+const inputplaylist = document.getElementById('playlist')
+const btnsetvideo = document.getElementById('btnsetvideo')
+// - User ID
+const myid = document.getElementById('myid')
+const setid = document.getElementById('setid')
+const myidloading = document.getElementById('myidloading')
+const myiderror = document.getElementById('myiderror')
+const btnsetid = document.getElementById('btnsetid')
+// - sync with
+const syncwith = document.getElementById('syncwith')
+// - Global Settings
+const inputglobalsyncoffset = document.getElementById('globalsyncoffset')
+const inputglobalvolume = document.getElementById('globalvolume')
+const mindif = document.getElementById('mindif')
+const maxdif = document.getElementById('maxdif')
+// - Share Link
+const share = document.getElementById('share')
+// - youtube
+const youtubediv = document.getElementById('youtube')
+const youtubewarpdiv = document.getElementById('youtubewarp')
 
-var damp = {
-    offset: 0.5,
-    deviceErrorFeed: 1,
-    deviceError: 0.98,
-    maxErr: 0.1,
-    preloadTime: 0.1
+
+// Global Dom Event ---------------------------------------
+btnsetid.onclick = function () {
+    socket.emit('setid', myid.value)
+    myidloading.style.display = ''
+    myiderror.style.display = 'none'
 }
 
-var limit = {
-    max: 0.075,
-    min: 0.05
+inputplaylist.onchange = function () {
+    updateList()
 }
 
+btnsetvideo.onclick = function () {
+    playHead = 0
+    updateList()
+    loadVideo()
+}
 
-var inputplaylist = document.getElementById('playlist')
-var syncwith = document.getElementById('syncwith')
-
-var myid = document.getElementById('myid')
-var setid = document.getElementById('setid')
-var myidloading = document.getElementById('myidloading')
-var myiderror = document.getElementById('myiderror')
-var share = document.getElementById('share')
-
-
-
-var btnsetid = document.getElementById('btnsetid')
-var btnsetvideo = document.getElementById('btnsetvideo')
-var inputglobalsyncoffset = document.getElementById('globalsyncoffset')
-var inputglobalvolume = document.getElementById('globalvolume')
-
-
+// URL parameters -----------------------------------------
+// - sync with
 var syncwithparam = (new URL(location.href)).searchParams.get('sync')
 if (syncwithparam != null) syncwith.value = syncwithparam
 
+// Global settings ----------------------------------------
+/**
+ * damping values
+ */
+var damp = {
+    offset: 0.5,
+    deviceErrorFeed: 1,
+    deviceError: 0.985,
+    maxErr: 0.08,
+    preloadTime: 0.1
+}
+/**
+ * Sync limit
+ */
+var limit = {
+    max: 0.075,
+    min: 0.045
+}
+
+/**
+ * GLobal Data Object
+ */
 var data = {
     playerdata: {},
     local: {
@@ -49,6 +84,10 @@ var data = {
     events: []
 }
 
+/**
+ * Global event recorder
+ * @param {Object} event 
+ */
 function record(event) {
     data.events.push({
         time: Date.now(),
@@ -56,25 +95,9 @@ function record(event) {
     })
 }
 
-btnsetid.onclick = function () {
-    socket.emit('setid', myid.value)
-    myidloading.style.display = ''
-    myiderror.style.display = 'none'
-}
-
+// Playlist -----------------------------------------------
 var playlist = []
 var playHead = 0
-
-inputplaylist.onchange = function () {
-    updateList()
-}
-
-btnsetvideo.onclick = function () {
-    playHead = 0
-    updateList()
-    loadVideo()
-}
-
 function updateList() {
     playlist = inputplaylist.value.split(/[,\n]/).map(x => {
         try {
@@ -96,10 +119,7 @@ function loadVideo() {
     reactionTime = succedReactionTime
 }
 
-var timeoffset_Damper = new Damper(15)
-var timeoffset = 0
-
-
+// Youtube Player -----------------------------------------
 var player;
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
@@ -116,42 +136,43 @@ function onYouTubeIframeAPIReady() {
     })
 }
 
-
 function onPlayerReady(event) {
     console.log('changed video')
     // event.target.playVideo();
+    resizePlayer()
     record({
         playerready: true
     })
 }
 
-var done = false;
-function onPlayerStateChange(event) {
-    record({
-        v_state: event.data
-    })
 
+function onPlayerStateChange(event) {
+    record({ v_state: event.data })
     if (event.data == YT.PlayerState.ENDED) {
-        record({
-            ENDED: true
-        })
+        record({ ENDED: true })
         loadVideo();
     }
     if (event.data == YT.BUFFERING) {
-        record({
-            BUFFERING: true
-        })
+        record({ BUFFERING: true })
         return
     }
-
     sync(true)
 }
-
-function stopVideo() {
-    player.stopVideo();
+function resizePlayer() {
+    var height = youtubediv.offsetWidth / 16 * 9
+    player.setSize(youtubediv.offsetWidth, height)
+    youtubewarpdiv.style.width = `${youtubediv.offsetWidth}px`
+    youtubewarpdiv.style.height = `${height}px`
 }
 
+addEventListener('resize', function () {
+    resizePlayer()
+})
 
+// Global Timing ------------------------------------------
+var timeoffset_Damper = new Damper(20, 4)
+var timeoffset = 0
+/** Send timing information to server */
 function timing() {
     var time = Date.now()
     socket.emit('timing', time)
@@ -159,6 +180,7 @@ function timing() {
         synca: time
     })
 }
+//  When server responces, update timing
 socket.on('timing', data => {
     var clientTime = Date.now()
     var time = (clientTime + data.clientTime) / 2
@@ -166,12 +188,16 @@ socket.on('timing', data => {
 
     record({
         syncb: {
-            time1: data.clientTime, time2: clientTime, serverTime: data.serverTime
+            time1: data.clientTime,
+            time2: clientTime,
+            serverTime: data.serverTime
         }
     })
 })
 
-
+// Global Synchronization ---------------------------------
+/** Send synchronize information to server,
+ *  Call after timming() */
 function sync(force = false) {
     var time = Date.now()
 
@@ -193,17 +219,15 @@ function sync(force = false) {
     }
 }
 
-
+// slow update
 function update() {
-
-    setTimeout(() => {
-        update()
-    }, 3000);
+    if (timeoffset_Damper.data.length > 10)
+        setTimeout(update, 3000)
+    else setTimeout(update, 1500)
 
     timing();
     sync();
 }
-
 update()
 
 var err = 0.2
@@ -223,9 +247,7 @@ var reactionTime = 0.2
 var succedReactionTime = 0
 var tweaked = false
 
-var expectWaits = 5
-
-
+var expectWaits = 10
 
 var tweaking = false
 
@@ -292,28 +314,30 @@ async function tweak(targetTime, eventTime) {
     } else {
         console.log('pause')
         player.pauseVideo()
-
+        console.log(getSyncTime(targetTime, eventTime, playing), playing)
         player.seekTo(getSyncTime(targetTime, eventTime, playing))
     }
-    var outofexpectSum = 0
-    for (var i = 0; i < expectWaits; i++) {
 
-        await new Promise(done => timer.setTimeout(done, 500))
+    if (sync_play) {
+        var outofexpect = 0;
+        var outofexpect_Damper = new Damper(expectWaits, 2)
+        for (var i = 0; i < expectWaits; i++) {
+            await new Promise(done => timer.setTimeout(done, 10))
+            outofexpect = deltaTime(getSyncTime(targetTime, eventTime, playing))
+            outofexpect = outofexpect_Damper.feed(outofexpect)
+            record({
+                outofexpect,
+                reactionTime
+            })
+            //if (outofexpect > 1) preloadTime += 1
+        }
 
+        reactionTime += outofexpect * damp.deviceError
 
-        var outofexpect = deltaTime(getSyncTime(targetTime, eventTime, playing))
-        outofexpectSum += outofexpect
-        record({
-            outofexpect,
-            reactionTime
-        })
-        //if (outofexpect > 1) preloadTime += 1
+        if (reactionTime > 3) reactionTime = 3
+        if (reactionTime < -1) reactionTime = -1
     }
-    var totalOutofexpect = (outofexpectSum / expectWaits)
-    reactionTime += totalOutofexpect * damp.deviceError
 
-    if (reactionTime > 3) reactionTime = 3
-    if (reactionTime < -1) reactionTime = -1
 
     /*
     if (totalOutofexpect < 0) {
@@ -324,13 +348,14 @@ async function tweak(targetTime, eventTime) {
     */
     //if (reactionTime > 2) reactionTime = 0
     //if (reactionTime < preloadTime) reactionTime = 0
+
     record({
         tweaked: {
             time: targetTime,
             event: eventTime
         }
     })
-    await new Promise(done => setTimeout(done, 1000))
+    await new Promise(done => setTimeout(done, preloadTime * 2000))
 
     tweaking = false
 
@@ -362,15 +387,19 @@ function smoothUpdate() {
         var targetTime = sync_targetTime
         var eventTime = sync_eventTime
 
-        delta = deltaTime(getSyncTime(targetTime, eventTime, sync_play))
-        data.server.time = getSyncTime(targetTime, eventTime, sync_play)
+        var server_play_time = getSyncTime(targetTime, eventTime, sync_play)
         data.server.event = eventTime
 
-        maxErr += (Math.abs(delta) - maxErr) * damp.maxErr
+        data.server.time = server_play_time
+        delta = deltaTime(server_play_time)
+
+        maxErr += (delta - maxErr) * damp.maxErr
+
         //console.log(delta)
         //if (Math.abs(delta) > 0.2)
         //if (Math.abs(delta) < 0.05)
 
+        /*
         if (Math.abs(maxErr) > limit.max * sync_rate) {
             targetVolume = 0
             dosync = true
@@ -385,10 +414,33 @@ function smoothUpdate() {
             dosync = false
             succedReactionTime += (reactionTime - succedReactionTime) * 0.03
         }
+        */
+
         record({
             maxErr
         })
         if (dosync) tweak(targetTime, eventTime)
+    }
+
+
+    try { limit.max = parseInt(maxdif.value) / 1000 } catch (e) { }
+    try { limit.min = parseInt(mindif.value) / 1000 } catch (e) { }
+
+
+
+    if (Math.abs(maxErr) > limit.max * sync_rate) {
+        targetVolume = 0
+        dosync = true
+    }
+    if (Math.abs(maxErr) < limit.min * sync_rate) {
+        targetVolume = 150
+
+        try {
+            targetVolume = parseInt(inputglobalvolume.value)
+        } catch (e) { }
+
+        dosync = false
+        succedReactionTime += (reactionTime - succedReactionTime) * 0.03
     }
 
     if (!(typeof player.getVolume == 'function')) return
@@ -418,7 +470,6 @@ var dosync = true
 
 
 socket.on('sync', data => {
-
     syncMode = false
     if (data.other) {
         syncMode = true
