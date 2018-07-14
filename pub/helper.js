@@ -49,8 +49,6 @@ function Damper(size, bias, min) {
 
     this.diverge = function () {
         var n = me.validData()
-        var max = n.reduce((a, b) => a > b ? a : b, 0)
-        var min = n.reduce((a, b) => a < b ? a : b, 0)
-        return max - min
+        return n[n.length-1]-n[0]
     }
 }
