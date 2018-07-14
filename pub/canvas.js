@@ -13,7 +13,6 @@ function txl(time) {
 }
 
 
-
 var canvasdiv = document.getElementById('canvas')
 
 function setup() {
@@ -28,6 +27,7 @@ function windowResized() {
 var correctSize = 0
 
 function draw() {
+    
 
     background(255)
     data.local.time = Date.now()

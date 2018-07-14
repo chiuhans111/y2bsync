@@ -24,21 +24,33 @@ function Timer() {
 }
 
 
-function Damper(size, bias) {
+function Damper(size, bias, min) {
     var me = this
     this.data = []
     this.size = size
     this.bias = bias
     this.value = null
     this.time = 0
+    this.min = min
+    this.validData = function () {
+        var bias = me.data.length / me.size * me.bias;
+        var x = me.data.map(x => x).sort((a, b) => a - b)
+        var n = x.slice(bias, -bias)
+        if (n.length >= me.min) return n
+        return me.data
+    }
 
     this.feed = function (value) {
         me.data.push(value)
         while (me.data.length > me.size) me.data.shift()
-
-        var x = me.data.map(x => x).sort()
-        var n = x.slice(bias, -bias)
-        if (n.length == 0) return me.data.reduce((a, b) => a + b, 0) / me.data.length;
+        var n = me.validData()
         return n.reduce((a, b) => a + b, 0) / n.length
+    }
+
+    this.diverge = function () {
+        var n = me.validData()
+        var max = n.reduce((a, b) => a > b ? a : b, 0)
+        var min = n.reduce((a, b) => a < b ? a : b, 0)
+        return max - min
     }
 }

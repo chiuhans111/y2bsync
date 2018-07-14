@@ -57,7 +57,7 @@ var damp = {
     offset: 0.5,
     deviceErrorFeed: 1,
     deviceError: 0.985,
-    maxErr: 0.08,
+    maxErr: 0.1,
     preloadTime: 0.1
 }
 /**
@@ -170,7 +170,7 @@ addEventListener('resize', function () {
 })
 
 // Global Timing ------------------------------------------
-var timeoffset_Damper = new Damper(20, 4)
+var timeoffset_Damper = new Damper(50, 10, 5)
 var timeoffset = 0
 /** Send timing information to server */
 function timing() {
@@ -221,9 +221,9 @@ function sync(force = false) {
 
 // slow update
 function update() {
-    if (timeoffset_Damper.data.length > 10)
+    if (timeoffset_Damper.diverge() < limit.max * 1000)
         setTimeout(update, 3000)
-    else setTimeout(update, 1500)
+    else setTimeout(update, 500)
 
     timing();
     sync();
@@ -320,7 +320,7 @@ async function tweak(targetTime, eventTime) {
 
     if (sync_play) {
         var outofexpect = 0;
-        var outofexpect_Damper = new Damper(expectWaits, 2)
+        var outofexpect_Damper = new Damper(expectWaits, 2, 1)
         for (var i = 0; i < expectWaits; i++) {
             await new Promise(done => timer.setTimeout(done, 10))
             outofexpect = deltaTime(getSyncTime(targetTime, eventTime, playing))
