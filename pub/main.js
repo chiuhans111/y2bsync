@@ -319,6 +319,8 @@ async function tweak(targetTime, eventTime) {
     }
 
     if (sync_play) {
+        await new Promise(done => setTimeout(done, preloadTime * 2000))
+
         var outofexpect = 0;
         var outofexpect_Damper = new Damper(expectWaits, 2, 1)
         for (var i = 0; i < expectWaits; i++) {

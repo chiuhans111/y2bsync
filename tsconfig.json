@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "sourceMap": true,
+        "outFile": "./pub/dist/main.js",
+        "module": "system"
+    },
+    "include": [
+        "./src/"
+    ],
+    "exclude": [
+        "/pub/"
+    ]
+}
