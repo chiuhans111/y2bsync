@@ -247,7 +247,8 @@ var reactionTime = 0.2
 var succedReactionTime = 0
 var tweaked = false
 
-var expectWaits = 10
+var expectWaits = 5
+var expectWaits_bias = 1
 
 var tweaking = false
 
@@ -322,7 +323,7 @@ async function tweak(targetTime, eventTime) {
         await new Promise(done => setTimeout(done, preloadTime * 2000))
 
         var outofexpect = 0;
-        var outofexpect_Damper = new Damper(expectWaits, 2, 1)
+        var outofexpect_Damper = new Damper(expectWaits, expectWaits_bias, 1)
         for (var i = 0; i < expectWaits; i++) {
             await new Promise(done => timer.setTimeout(done, 10))
             outofexpect = deltaTime(getSyncTime(targetTime, eventTime, playing))
