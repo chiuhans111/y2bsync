@@ -325,7 +325,7 @@ async function tweak(targetTime, eventTime) {
         var outofexpect = 0;
         var outofexpect_Damper = new Damper(expectWaits, expectWaits_bias, 1)
         for (var i = 0; i < expectWaits; i++) {
-            await new Promise(done => timer.setTimeout(done, 10))
+            await new Promise(done => timer.setTimeout(done, 14))
             outofexpect = deltaTime(getSyncTime(targetTime, eventTime, playing))
             outofexpect = outofexpect_Damper.feed(outofexpect)
             record({
